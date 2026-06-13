@@ -1,43 +1,57 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../api/axios";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', otp: '', newPassword: '', confirmPassword: '' });
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [form, setForm] = useState({
+    email: "",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
 
-    if (!form.email || !form.otp || !form.newPassword || !form.confirmPassword) {
-      setError('All fields are required.');
+    if (
+      !form.email ||
+      !form.otp ||
+      !form.newPassword ||
+      !form.confirmPassword
+    ) {
+      setError("All fields are required.");
       return;
     }
 
     if (form.newPassword !== form.confirmPassword) {
-      setError('Passwords do not match.');
+      setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/reset-password', {
+      const { data } = await api.post("/auth/reset-password", {
         email: form.email,
         otp: form.otp,
         newPassword: form.newPassword,
       });
-      setMessage(data.message || 'Password reset successful.');
-      setForm({ email: '', otp: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => navigate('/login'), 2000);
+      setMessage(data.message || "Password reset successful.");
+      setForm({ email: "", otp: "", newPassword: "", confirmPassword: "" });
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to reset password. Please try again.');
+      setError(
+        err.response?.data?.message ||
+          "Unable to reset password. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -45,18 +59,25 @@ const ResetPassword = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-container" style={{ maxWidth: 520 }}>
+      <div className="auth-container">
         <div className="auth-logo">
-          <img 
-            src="/logo.png" 
-            alt="HCMS Logo" 
-            style={{ width: '100%', maxWidth: '380px', margin: '0 auto', display: 'block' }} 
+          <img
+            src="/logo.png"
+            alt="HCMS Logo"
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              margin: "0 auto",
+              display: "block",
+            }}
           />
         </div>
 
         <div className="auth-card">
           <h2>Verify OTP</h2>
-          <p className="auth-subtitle">Enter the OTP sent to your email and set a new password.</p>
+          <p className="auth-subtitle">
+            Enter the OTP sent to your email and set a new password.
+          </p>
           {error && (
             <div className="alert alert-error">
               <span>⚠</span> {error}
@@ -139,8 +160,12 @@ const ResetPassword = () => {
               />
             </div>
 
-            <button className="btn btn-primary btn-lg" type="submit" disabled={loading}>
-              {loading ? 'Resetting password…' : 'Reset Password'}
+            <button
+              className="btn btn-primary btn-lg"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Resetting password…" : "Reset Password"}
             </button>
           </form>
 

@@ -1,23 +1,23 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 
-const ROLES = ['student', 'admin', 'staff'];
+const ROLES = ["student", "admin", "staff"];
 
 const Login = () => {
   const { login } = useAuth();
-  const navigate   = useNavigate();
+  const navigate = useNavigate();
 
   // Step 1: credentials
-  const [form, setForm]       = useState({ email: '', password: '', role: '' });
+  const [form, setForm] = useState({ email: "", password: "", role: "" });
   // Step 2: OTP
-  const [step, setStep]       = useState(1);   // 1 = credentials, 2 = OTP
-  const [otp, setOtp]         = useState('');
-  const [sentEmail, setSentEmail] = useState('');
+  const [step, setStep] = useState(1); // 1 = credentials, 2 = OTP
+  const [otp, setOtp] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
 
-  const [error, setError]     = useState('');
-  const [info, setInfo]       = useState('');
+  const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) =>
@@ -26,23 +26,25 @@ const Login = () => {
   /* ---------- Step 1: submit credentials ---------- */
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setInfo('');
+    setError("");
+    setInfo("");
 
     if (!form.email || !form.password || !form.role) {
-      setError('Email, password, and role are required.');
+      setError("Email, password, and role are required.");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', form);
+      const { data } = await api.post("/auth/login", form);
       // Backend sends OTP and returns otpRequired: true
       setSentEmail(data.email || form.email.trim().toLowerCase());
       setInfo(data.message);
       setStep(2);
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      setError(
+        err.response?.data?.message || "Login failed. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -51,24 +53,24 @@ const Login = () => {
   /* ---------- Step 2: verify OTP ---------- */
   const handleOTPSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!otp) {
-      setError('Please enter the OTP sent to your email.');
+      setError("Please enter the OTP sent to your email.");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login/verify-otp', {
+      const { data } = await api.post("/auth/login/verify-otp", {
         email: sentEmail,
         otp,
       });
       login(data.user, data.token);
-      const dashMap = { student: '/student', admin: '/admin', staff: '/staff' };
+      const dashMap = { student: "/student", admin: "/admin", staff: "/staff" };
       navigate(dashMap[data.user.role], { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      setError(err.response?.data?.message || "Invalid OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -76,15 +78,15 @@ const Login = () => {
 
   /* ---------- Resend OTP ---------- */
   const handleResend = async () => {
-    setError('');
-    setInfo('');
+    setError("");
+    setInfo("");
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', form);
-      setInfo(data.message || 'New OTP sent to your email.');
-      setOtp('');
+      const { data } = await api.post("/auth/login", form);
+      setInfo(data.message || "New OTP sent to your email.");
+      setOtp("");
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to resend OTP.');
+      setError(err.response?.data?.message || "Failed to resend OTP.");
     } finally {
       setLoading(false);
     }
@@ -95,20 +97,26 @@ const Login = () => {
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-logo">
-          <img 
-            src="/logo.png" 
-            alt="HCMS Logo" 
-            style={{ width: '100%', maxWidth: '380px', margin: '0 auto', display: 'block' }} 
+          <img
+            src="/logo.png"
+            alt="HCMS Logo"
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              margin: "0 auto",
+              display: "block",
+            }}
           />
         </div>
 
         <div className="auth-card">
-
           {/* ── Step 1: Credentials ── */}
           {step === 1 && (
             <>
               <h2>Welcome back</h2>
-              <p className="auth-subtitle">Sign in to your account to continue</p>
+              <p className="auth-subtitle">
+                Sign in to your account to continue
+              </p>
 
               {error && (
                 <div className="alert alert-error">
@@ -118,13 +126,15 @@ const Login = () => {
 
               <form onSubmit={handleCredentialsSubmit} noValidate>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="login-email">Email Address</label>
+                  <label className="form-label" htmlFor="login-email">
+                    Email Address
+                  </label>
                   <input
                     id="login-email"
                     className="form-input"
                     type="email"
                     name="email"
-                    placeholder="you@nitj.ac.in"
+                    placeholder="you@example.com"
                     value={form.email}
                     onChange={handleChange}
                     autoComplete="email"
@@ -133,7 +143,9 @@ const Login = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="login-password">Password</label>
+                  <label className="form-label" htmlFor="login-password">
+                    Password
+                  </label>
                   <input
                     id="login-password"
                     className="form-input"
@@ -148,7 +160,9 @@ const Login = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" htmlFor="login-role">Login As</label>
+                  <label className="form-label" htmlFor="login-role">
+                    Login As
+                  </label>
                   <select
                     id="login-role"
                     className="form-select"
@@ -160,7 +174,11 @@ const Login = () => {
                     <option value="">— Select Role —</option>
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
-                        {r === 'admin' ? 'Admin / Warden' : r === 'staff' ? 'Maintenance Staff' : 'Student'}
+                        {r === "admin"
+                          ? "Admin / Warden"
+                          : r === "staff"
+                            ? "Maintenance Staff"
+                            : "Student"}
                       </option>
                     ))}
                   </select>
@@ -172,7 +190,7 @@ const Login = () => {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? 'Sending OTP…' : '→  Continue'}
+                  {loading ? "Sending OTP…" : "→ Continue"}
                 </button>
               </form>
 
@@ -183,7 +201,7 @@ const Login = () => {
               <div className="auth-divider">— or —</div>
 
               <p className="auth-footer">
-                Don&apos;t have an account?{' '}
+                Don&apos;t have an account?{" "}
                 <Link to="/register">Create an Account</Link>
               </p>
             </>
@@ -192,11 +210,12 @@ const Login = () => {
           {/* ── Step 2: OTP Verification ── */}
           {step === 2 && (
             <>
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>✉️</div>
-                <h2 style={{ marginBottom: '8px' }}>Check your email</h2>
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}></div>
+                <h2 style={{ marginBottom: "8px" }}>Check your email</h2>
                 <p className="auth-subtitle">
-                  We sent a 6-digit OTP to<br />
+                  We sent a 6-digit OTP to
+                  <br />
                   <strong>{sentEmail}</strong>
                 </p>
               </div>
@@ -215,7 +234,9 @@ const Login = () => {
 
               <form onSubmit={handleOTPSubmit} noValidate>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="login-otp">Enter OTP</label>
+                  <label className="form-label" htmlFor="login-otp">
+                    Enter OTP
+                  </label>
                   <input
                     id="login-otp"
                     className="form-input"
@@ -227,7 +248,11 @@ const Login = () => {
                     inputMode="numeric"
                     autoFocus
                     required
-                    style={{ textAlign: 'center', fontSize: '1.5rem', letterSpacing: '0.4rem' }}
+                    style={{
+                      textAlign: "center",
+                      fontSize: "1.5rem",
+                      letterSpacing: "0.4rem",
+                    }}
                   />
                 </div>
 
@@ -237,25 +262,25 @@ const Login = () => {
                   type="submit"
                   disabled={loading}
                 >
-                  {loading ? 'Verifying…' : '✓  Verify & Sign In'}
+                  {loading ? "Verifying…" : "✓ Verify & Sign In"}
                 </button>
               </form>
 
               <div className="auth-divider">— or —</div>
 
               <p className="auth-footer">
-                Didn't receive it?{' '}
+                Didn't receive it?{" "}
                 <button
                   onClick={handleResend}
                   disabled={loading}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent-primary)',
-                    cursor: 'pointer',
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-primary)",
+                    cursor: "pointer",
                     fontWeight: 600,
                     padding: 0,
-                    fontSize: 'inherit',
+                    fontSize: "inherit",
                   }}
                 >
                   Resend OTP
@@ -263,15 +288,20 @@ const Login = () => {
               </p>
               <p className="auth-footer">
                 <button
-                  onClick={() => { setStep(1); setError(''); setInfo(''); setOtp(''); }}
+                  onClick={() => {
+                    setStep(1);
+                    setError("");
+                    setInfo("");
+                    setOtp("");
+                  }}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--accent-primary)',
-                    cursor: 'pointer',
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-primary)",
+                    cursor: "pointer",
                     fontWeight: 600,
                     padding: 0,
-                    fontSize: 'inherit',
+                    fontSize: "inherit",
                   }}
                 >
                   ← Change email / role
@@ -279,7 +309,6 @@ const Login = () => {
               </p>
             </>
           )}
-
         </div>
       </div>
     </div>

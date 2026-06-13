@@ -1,8 +1,11 @@
 const Complaint = require('../models/Complaint');
+const { sendComplaintStatusEmail } = require('../utils/emailService');
 
+// ─────────────────────────────────────────────────────────────
 // @desc    Get complaints assigned to the logged-in staff member
 // @route   GET /api/staff/complaints
 // @access  Private (Staff)
+// ─────────────────────────────────────────────────────────────
 const getAssignedComplaints = async (req, res) => {
   try {
     const complaints = await Complaint.find({ staff: req.user.id })
@@ -16,9 +19,11 @@ const getAssignedComplaints = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────
 // @desc    Update complaint status and/or remarks
 // @route   PUT /api/staff/complaints/:id/status
 // @access  Private (Staff)
+// ─────────────────────────────────────────────────────────────
 const updateComplaintStatus = async (req, res) => {
   try {
     const { status, remarks } = req.body;
@@ -40,11 +45,8 @@ const updateComplaintStatus = async (req, res) => {
     }
 
     complaint.status = status;
-    if (remarks !== undefined) {
-      complaint.remarks = remarks;
-    }
+    if (remarks !== undefined) complaint.remarks = remarks;
 
-    // Set resolvedAt timestamp when marking as Resolved
     if (status === 'Resolved') {
       complaint.resolvedAt = new Date();
     } else {
@@ -52,8 +54,16 @@ const updateComplaintStatus = async (req, res) => {
     }
 
     await complaint.save();
-
     await complaint.populate('student', 'name email roomNo phone');
+
+    // Send status update email to student
+    sendComplaintStatusEmail(
+      complaint.student.email,
+      complaint.student.name,
+      complaint,
+      status,
+      remarks || ''
+    ).catch(() => {});
 
     res.status(200).json({
       message: `Complaint marked as "${status}"`,

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllComplaints,
+  getAnalytics,
   getAllStudents,
   getAllStaff,
   assignComplaint,
@@ -14,6 +15,9 @@ router.use(protect, authorizeRoles('admin'));
 
 // GET /api/admin/complaints
 router.get('/complaints', getAllComplaints);
+
+// GET /api/admin/analytics
+router.get('/analytics', getAnalytics);
 
 // GET /api/admin/students
 router.get('/students', getAllStudents);

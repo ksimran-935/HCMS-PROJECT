@@ -20,7 +20,23 @@ const complaintSchema = new mongoose.Schema(
     description: {
       type: String,
       required: [true, 'Description is required'],
-      maxlength: [200, 'Description cannot exceed 200 characters'],
+      maxlength: [500, 'Description cannot exceed 500 characters'],
+    },
+    // Complaint-specific location info
+    hostel: {
+      type: String,
+      trim: true,
+      required: [true, 'Hostel name is required'],
+    },
+    roomNo: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    mobileNo: {
+      type: String,
+      trim: true,
+      required: [true, 'Mobile number is required'],
     },
     status: {
       type: String,

@@ -1,5 +1,5 @@
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -7,22 +7,27 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
-  const getInitials = (name = '') =>
-    name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+  const getInitials = (name = "") =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
   const getRoleLabel = (role) => {
-    if (role === 'admin') return 'Admin / Warden';
-    if (role === 'staff') return 'Maintenance Staff';
-    return 'Student';
+    if (role === "admin") return "Admin / Warden";
+    if (role === "staff") return "Maintenance Staff";
+    return "Student";
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-brand">
-        <div className="brand-icon">🏨</div>
+        <div className="brand-icon"></div>
         <span>HCMS</span>
       </div>
 
@@ -36,7 +41,7 @@ const Navbar = () => {
             </div>
           </div>
           <button className="btn btn-danger btn-sm" onClick={handleLogout}>
-            ⎋ Logout
+            Logout
           </button>
         </div>
       )}

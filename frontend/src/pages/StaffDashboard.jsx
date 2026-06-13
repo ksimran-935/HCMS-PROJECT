@@ -1,49 +1,65 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
-import Navbar from '../components/Navbar';
-import StatusBadge from '../components/StatusBadge';
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
+import Navbar from "../components/Navbar";
+import StatusBadge from "../components/StatusBadge";
 
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  d
+    ? new Date(d).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+    : "—";
 
 const StaffDashboard = () => {
   const { user } = useAuth();
 
   const [complaints, setComplaints] = useState([]);
-  const [loading,    setLoading]    = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Update modal
-  const [modal,        setModal]        = useState(null);
-  const [newStatus,    setNewStatus]    = useState('');
-  const [remarks,      setRemarks]      = useState('');
-  const [updating,     setUpdating]     = useState(false);
-  const [updateMsg,    setUpdateMsg]    = useState('');
-  const [updateError,  setUpdateError]  = useState('');
+  const [modal, setModal] = useState(null);
+  const [newStatus, setNewStatus] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const [updateMsg, setUpdateMsg] = useState("");
+  const [updateError, setUpdateError] = useState("");
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/staff/complaints');
+      const { data } = await api.get("/staff/complaints");
       setComplaints(data.complaints);
-    } catch { /* handled by interceptor */ }
-    finally { setLoading(false); }
+    } catch {
+      /* handled by interceptor */
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { fetchComplaints(); }, [fetchComplaints]);
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]);
 
   const openModal = (complaint) => {
     setModal(complaint);
-    setNewStatus(complaint.status === 'Assigned' ? 'In Progress' : complaint.status);
-    setRemarks(complaint.remarks || '');
-    setUpdateMsg('');
-    setUpdateError('');
+    setNewStatus(
+      complaint.status === "Assigned" ? "In Progress" : complaint.status,
+    );
+    setRemarks(complaint.remarks || "");
+    setUpdateMsg("");
+    setUpdateError("");
   };
 
   const handleUpdate = async () => {
-    if (!newStatus) { setUpdateError('Please select a status.'); return; }
+    if (!newStatus) {
+      setUpdateError("Please select a status.");
+      return;
+    }
     setUpdating(true);
-    setUpdateError('');
+    setUpdateError("");
     try {
       const { data } = await api.put(`/staff/complaints/${modal._id}/status`, {
         status: newStatus,
@@ -51,11 +67,11 @@ const StaffDashboard = () => {
       });
       setUpdateMsg(data.message);
       setComplaints((prev) =>
-        prev.map((c) => (c._id === modal._id ? data.complaint : c))
+        prev.map((c) => (c._id === modal._id ? data.complaint : c)),
       );
       setTimeout(() => setModal(null), 1200);
     } catch (err) {
-      setUpdateError(err.response?.data?.message || 'Update failed.');
+      setUpdateError(err.response?.data?.message || "Update failed.");
     } finally {
       setUpdating(false);
     }
@@ -70,18 +86,21 @@ const StaffDashboard = () => {
         <div className="dashboard-header">
           <h1>Staff Dashboard</h1>
           <p>
-            Welcome, <strong style={{ color: 'var(--text-primary)' }}>{user?.name}</strong>
+            Welcome,{" "}
+            <strong style={{ color: "var(--text-primary)" }}>
+              {user?.name}
+            </strong>
             {user?.department && ` · ${user.department} Department`}
           </p>
         </div>
 
         {/* Stats */}
-        <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+        <div className="stats-grid" style={{ marginBottom: "2rem" }}>
           {[
-            { label: 'Assigned',    value: countByStatus('Assigned') },
-            { label: 'In Progress', value: countByStatus('In Progress') },
-            { label: 'Resolved',    value: countByStatus('Resolved') },
-            { label: 'Total',       value: complaints.length },
+            { label: "Assigned", value: countByStatus("Assigned") },
+            { label: "In Progress", value: countByStatus("In Progress") },
+            { label: "Resolved", value: countByStatus("Resolved") },
+            { label: "Total", value: complaints.length },
           ].map((s) => (
             <div className="stat-card" key={s.label}>
               <div className="stat-number">{s.value}</div>
@@ -93,14 +112,18 @@ const StaffDashboard = () => {
         {/* Header */}
         <div className="section-header">
           <span className="section-title">My Assigned Complaints</span>
-          <button className="btn btn-outline btn-sm" onClick={fetchComplaints}>↻ Refresh</button>
+          <button className="btn btn-outline btn-sm" onClick={fetchComplaints}>
+            ↻ Refresh
+          </button>
         </div>
 
         {loading ? (
-          <div className="spinner-wrapper"><div className="spinner" /></div>
+          <div className="spinner-wrapper">
+            <div className="spinner" />
+          </div>
         ) : complaints.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📭</div>
+            <div className="empty-icon"></div>
             <h3>No complaints assigned yet</h3>
             <p>The admin will assign complaints to you shortly.</p>
           </div>
@@ -111,8 +134,10 @@ const StaffDashboard = () => {
                 <div className="complaint-card-top">
                   <div className="complaint-meta">
                     <span className="complaint-category">{c.category}</span>
-                    <span style={{ color: 'var(--text-muted)' }}>·</span>
-                    <span className="complaint-date">{formatDate(c.createdAt)}</span>
+                    <span style={{ color: "var(--text-muted)" }}>·</span>
+                    <span className="complaint-date">
+                      {formatDate(c.createdAt)}
+                    </span>
                   </div>
                   <StatusBadge status={c.status} />
                 </div>
@@ -126,31 +151,33 @@ const StaffDashboard = () => {
                       {c.student?.roomNo && ` · Room ${c.student.roomNo}`}
                     </p>
                     {c.student?.phone && (
-                      <p className="complaint-info">Phone: <span>{c.student.phone}</span></p>
+                      <p className="complaint-info">
+                        Phone: <span>{c.student.phone}</span>
+                      </p>
                     )}
                   </div>
 
                   <div className="complaint-actions">
-                    {c.status !== 'Resolved' && (
+                    {c.status !== "Resolved" && (
                       <button
                         id={`update-btn-${c._id}`}
                         className="btn btn-primary btn-sm"
                         onClick={() => openModal(c)}
                       >
-                        ✏ Update Status
+                        ✎ Update Status
                       </button>
                     )}
                   </div>
                 </div>
 
                 {c.remarks && (
-                  <div className="remarks-box" style={{ marginTop: '0.75rem' }}>
-                    💬 Remark: {c.remarks}
+                  <div className="remarks-box" style={{ marginTop: "0.75rem" }}>
+                    Remark: {c.remarks}
                   </div>
                 )}
 
                 {c.resolvedAt && (
-                  <p className="complaint-info" style={{ marginTop: '0.5rem' }}>
+                  <p className="complaint-info" style={{ marginTop: "0.5rem" }}>
                     Resolved on: <span>{formatDate(c.resolvedAt)}</span>
                   </p>
                 )}
@@ -166,24 +193,62 @@ const StaffDashboard = () => {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <span className="modal-title">Update Complaint Status</span>
-              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+              <button className="modal-close" onClick={() => setModal(null)}>
+                ✕
+              </button>
             </div>
 
-            <div style={{ marginBottom: '0.75rem' }}>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Category</p>
-              <p style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>{modal.category}</p>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <p
+                style={{
+                  fontSize: "0.825rem",
+                  color: "var(--text-muted)",
+                  marginBottom: "0.2rem",
+                }}
+              >
+                Category
+              </p>
+              <p style={{ fontWeight: 600, color: "var(--accent-primary)" }}>
+                {modal.category}
+              </p>
             </div>
 
-            <div style={{ marginBottom: '1.25rem' }}>
-              <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Description</p>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{modal.description}</p>
+            <div style={{ marginBottom: "1.25rem" }}>
+              <p
+                style={{
+                  fontSize: "0.825rem",
+                  color: "var(--text-muted)",
+                  marginBottom: "0.2rem",
+                }}
+              >
+                Description
+              </p>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--text-secondary)",
+                  lineHeight: 1.6,
+                }}
+              >
+                {modal.description}
+              </p>
             </div>
 
-            {updateError && <div className="alert alert-error"><span>⚠</span> {updateError}</div>}
-            {updateMsg   && <div className="alert alert-success"><span>✓</span> {updateMsg}</div>}
+            {updateError && (
+              <div className="alert alert-error">
+                <span>⚠</span> {updateError}
+              </div>
+            )}
+            {updateMsg && (
+              <div className="alert alert-success">
+                <span>✓</span> {updateMsg}
+              </div>
+            )}
 
             <div className="form-group">
-              <label className="form-label" htmlFor="modal-status-select">New Status</label>
+              <label className="form-label" htmlFor="modal-status-select">
+                New Status
+              </label>
               <select
                 id="modal-status-select"
                 className="form-select"
@@ -196,7 +261,12 @@ const StaffDashboard = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="modal-remarks">Remarks <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+              <label className="form-label" htmlFor="modal-remarks">
+                Remarks{" "}
+                <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>
+                  (optional)
+                </span>
+              </label>
               <textarea
                 id="modal-remarks"
                 className="form-textarea"
@@ -207,8 +277,14 @@ const StaffDashboard = () => {
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-              <button className="btn btn-outline" onClick={() => setModal(null)} style={{ flex: 1 }}>Cancel</button>
+            <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setModal(null)}
+                style={{ flex: 1 }}
+              >
+                Cancel
+              </button>
               <button
                 id="confirm-update-btn"
                 className="btn btn-primary"
@@ -216,7 +292,7 @@ const StaffDashboard = () => {
                 disabled={updating}
                 style={{ flex: 1 }}
               >
-                {updating ? 'Updating…' : '✓ Update'}
+                {updating ? "Updating…" : "✓ Update"}
               </button>
             </div>
           </div>

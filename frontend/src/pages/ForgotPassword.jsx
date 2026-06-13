@@ -1,29 +1,31 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import api from '../api/axios';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import api from "../api/axios";
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
 
     if (!email) {
-      setError('Please enter your registered email address.');
+      setError("Please enter your registered email address.");
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/forgot-password', { email });
-      setMessage(data.message || 'OTP sent to your email address.');
+      const { data } = await api.post("/auth/forgot-password", { email });
+      setMessage(data.message || "OTP sent to your email address.");
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to send OTP. Please try again.');
+      setError(
+        err.response?.data?.message || "Unable to send OTP. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -31,18 +33,25 @@ const ForgotPassword = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-container" style={{ maxWidth: 520 }}>
+      <div className="auth-container">
         <div className="auth-logo">
-          <img 
-            src="/logo.png" 
-            alt="HCMS Logo" 
-            style={{ width: '100%', maxWidth: '380px', margin: '0 auto', display: 'block' }} 
+          <img
+            src="/logo.png"
+            alt="HCMS Logo"
+            style={{
+              width: "100%",
+              maxWidth: "380px",
+              margin: "0 auto",
+              display: "block",
+            }}
           />
         </div>
 
         <div className="auth-card">
           <h2>Reset Password</h2>
-          <p className="auth-subtitle">Enter your registered email address to receive an OTP.</p>
+          <p className="auth-subtitle">
+            Enter your registered email address to receive an OTP.
+          </p>
           {error && (
             <div className="alert alert-error">
               <span>⚠</span> {error}
@@ -65,19 +74,30 @@ const ForgotPassword = () => {
                 className="form-input"
                 type="email"
                 name="email"
-                placeholder="yourname@nitj.ac.in"
+                placeholder="yourname@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
               />
-              <small style={{ display: 'block', marginTop: '6px', fontSize: '0.78rem', opacity: 0.6 }}>
+              <small
+                style={{
+                  display: "block",
+                  marginTop: "6px",
+                  fontSize: "0.78rem",
+                  opacity: 0.6,
+                }}
+              >
                 Enter the email address registered with your account.
               </small>
             </div>
 
-            <button className="btn btn-primary btn-lg" type="submit" disabled={loading}>
-              {loading ? 'Sending OTP…' : 'Send OTP'}
+            <button
+              className="btn btn-primary btn-lg"
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? "Sending OTP…" : "Send OTP"}
             </button>
           </form>
 
