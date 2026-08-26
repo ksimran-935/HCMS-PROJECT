@@ -16,10 +16,15 @@ const app = express();
 connectDB();
 
 // Middleware
-const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000' , 'https://hcms-project-frontend.onrender.com/'];
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://hcms-project-frontend.onrender.com', // no trailing slash
+];
 if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-  allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/$/, ''));
+  // add both with and without trailing slash to be safe
+  const base = process.env.FRONTEND_URL.replace(/\/$/, '');
+  if (!allowedOrigins.includes(base)) allowedOrigins.push(base);
 }
 
 app.use(cors({
