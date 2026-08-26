@@ -1,6 +1,9 @@
 const nodemailer = require('nodemailer');
 
 // --------------- Nodemailer Setup ---------------
+// Single reusable transporter — created once, reused for all emails (faster)
+let _transporter = null;
+
 const getMailTransport = () => {
   const host = process.env.MAIL_HOST;
   const user = process.env.MAIL_USER;
@@ -14,12 +17,19 @@ const getMailTransport = () => {
     return null; // not configured
   }
 
-  return nodemailer.createTransport({
-    host,
-    port: parseInt(process.env.MAIL_PORT, 10) || 587,
-    secure: process.env.MAIL_SECURE === 'true',
-    auth: { user, pass },
-  });
+  if (!_transporter) {
+    _transporter = nodemailer.createTransport({
+      host,
+      port: parseInt(process.env.MAIL_PORT, 10) || 587,
+      secure: process.env.MAIL_SECURE === 'true',
+      auth: { user, pass },
+      connectionTimeout: 10000,  // 10s to establish connection
+      greetingTimeout: 10000,    // 10s for SMTP greeting
+      socketTimeout: 15000,      // 15s for each send operation
+    });
+  }
+
+  return _transporter;
 };
 
 const FROM = () => process.env.MAIL_FROM || 'HCMS <no-reply@hcms.com>';
@@ -36,6 +46,8 @@ const sendMail = async ({ to, subject, text, html }) => {
     return true;
   } catch (err) {
     console.error('❌ SMTP sendMail failed:', err.message);
+    // Reset on failure so it reconnects fresh next time
+    _transporter = null;
     return false;
   }
 };
