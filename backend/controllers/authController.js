@@ -1,10 +1,7 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const {
-  sendRegisterOTPEmail,
-  sendResetOTPEmail,
-  sendLoginOTPEmail,
-} = require('../utils/emailService');
+const { sendPasswordResetEmail } = require('../utils/emailService');
 
 // Generate JWT token
 const generateToken = (id) =>
@@ -12,11 +9,8 @@ const generateToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 
-const generateOTP = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
-
 // ─────────────────────────────────────────────────────────────
-// @desc    Register Step 1 — validate fields, send OTP email
+// @desc    Register — create account immediately, return JWT
 // @route   POST /api/auth/register
 // @access  Public
 // ─────────────────────────────────────────────────────────────
@@ -24,19 +18,16 @@ const register = async (req, res) => {
   try {
     const { name, email, password, role, phone, roomNo, department } = req.body;
 
-    // Validate required fields
     if (!name || !email || !password || !role) {
       return res.status(400).json({
         message: 'Name, email, password, and role are required',
       });
     }
 
-    // Validate role
     if (!['student', 'admin', 'staff'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role selected' });
     }
 
-    // Staff must select a department
     const allowedDepts = [
       'Electricity', 'Water', 'Cleanliness', 'Internet', 'Room Maintenance', 'Other',
     ];
@@ -48,108 +39,24 @@ const register = async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check duplicate email
     const existingUser = await User.findOne({ email: cleanEmail });
-    if (existingUser && existingUser.isVerified) {
+    if (existingUser) {
       return res.status(400).json({
         message: 'Email already registered. Please use a different email.',
       });
     }
 
-    // Generate OTP
-    const otp = generateOTP();
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
-
-    if (existingUser && !existingUser.isVerified) {
-      // Update existing unverified entry with fresh OTP and new data
-      existingUser.name = name.trim();
-      existingUser.password = password;
-      existingUser.role = role;
-      existingUser.phone = phone || '';
-      existingUser.roomNo = role === 'student' ? (roomNo || '') : '';
-      existingUser.department = role === 'staff' ? department : '';
-      existingUser.registerOTP = otp;
-      existingUser.registerOTPExpires = otpExpires;
-      await existingUser.save();
-    } else {
-      // Create new unverified user
-      const userData = {
-        name: name.trim(),
-        email: cleanEmail,
-        password,
-        role,
-        phone: phone || '',
-        isVerified: false,
-        registerOTP: otp,
-        registerOTPExpires: otpExpires,
-      };
-      if (role === 'student') userData.roomNo = roomNo || '';
-      if (role === 'staff') userData.department = department;
-      await User.create(userData);
-    }
-
-    // Send OTP email
-    const emailSent = await sendRegisterOTPEmail(cleanEmail, otp, name.trim());
-    if (!emailSent) {
-      return res.status(500).json({
-        message: 'Failed to send OTP email. Please check SMTP configuration.',
-      });
-    }
-
-    res.status(200).json({
-      message: `OTP sent to ${cleanEmail}. Please verify your email to complete registration.`,
-      otpRequired: true,
+    const userData = {
+      name: name.trim(),
       email: cleanEmail,
-    });
-  } catch (error) {
-    console.error('Register error:', error.message);
-    if (error.name === 'ValidationError') {
-      const messages = Object.values(error.errors).map((e) => e.message);
-      return res.status(400).json({ message: messages.join(' ') });
-    }
-    res.status(500).json({ message: error.message || 'Server error during registration' });
-  }
-};
+      password,
+      role,
+      phone: phone || '',
+    };
+    if (role === 'student') userData.roomNo = roomNo || '';
+    if (role === 'staff') userData.department = department;
 
-// ─────────────────────────────────────────────────────────────
-// @desc    Register Step 2 — verify OTP, activate account
-// @route   POST /api/auth/register/verify-otp
-// @access  Public
-// ─────────────────────────────────────────────────────────────
-const verifyRegisterOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({ message: 'Email and OTP are required' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
-
-    if (!user) {
-      return res.status(404).json({ message: 'No pending registration found for this email.' });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ message: 'Account already verified. Please log in.' });
-    }
-
-    if (
-      !user.registerOTP ||
-      user.registerOTP !== otp ||
-      !user.registerOTPExpires ||
-      user.registerOTPExpires < Date.now()
-    ) {
-      return res.status(400).json({ message: 'Invalid or expired OTP. Please try again.' });
-    }
-
-    // Activate account
-    user.isVerified = true;
-    user.registerOTP = '';
-    user.registerOTPExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-
+    const user = await User.create(userData);
     const token = generateToken(user._id);
 
     res.status(201).json({
@@ -166,13 +73,17 @@ const verifyRegisterOTP = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Verify register OTP error:', error.message);
-    res.status(500).json({ message: 'Server error during OTP verification', error: error.message });
+    console.error('Register error:', error.message);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({ message: messages.join(' ') });
+    }
+    res.status(500).json({ message: error.message || 'Server error during registration' });
   }
 };
 
 // ─────────────────────────────────────────────────────────────
-// @desc    Login Step 1 — validate credentials & send OTP
+// @desc    Login — validate credentials & issue JWT immediately
 // @route   POST /api/auth/login
 // @access  Public
 // ─────────────────────────────────────────────────────────────
@@ -197,14 +108,6 @@ const login = async (req, res) => {
       });
     }
 
-    // isVerified === false means pending OTP verification (new accounts)
-    // isVerified === undefined means legacy account created before this field existed — allow login
-    if (user.isVerified === false) {
-      return res.status(403).json({
-        message: 'Email not verified. Please complete the registration OTP step.',
-      });
-    }
-
     if (user.role !== role) {
       return res.status(401).json({
         message: `No ${role} account found with this email. Please select the correct role.`,
@@ -215,64 +118,6 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-
-    // Generate login OTP
-    const otp = generateOTP();
-    user.loginOTP = otp;
-    user.loginOTPExpires = Date.now() + 10 * 60 * 1000;
-    await user.save({ validateBeforeSave: false });
-
-    const emailSent = await sendLoginOTPEmail(cleanEmail, otp, user.name);
-    if (!emailSent) {
-      return res.status(500).json({
-        message: 'Credentials verified but OTP email failed. Check SMTP config in .env.',
-      });
-    }
-
-    res.status(200).json({
-      message: `OTP sent to ${cleanEmail}. Please check your inbox.`,
-      otpRequired: true,
-      email: cleanEmail,
-    });
-  } catch (error) {
-    console.error('Login error:', error.message);
-    res.status(500).json({ message: 'Server error during login', error: error.message });
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
-// @desc    Login Step 2 — verify OTP & issue JWT
-// @route   POST /api/auth/login/verify-otp
-// @access  Public
-// ─────────────────────────────────────────────────────────────
-const verifyLoginOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({ message: 'Email and OTP are required' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
-
-    if (!user) {
-      return res.status(404).json({ message: 'No account found with this email.' });
-    }
-
-    if (
-      !user.loginOTP ||
-      user.loginOTP !== otp ||
-      !user.loginOTPExpires ||
-      user.loginOTPExpires < Date.now()
-    ) {
-      return res.status(400).json({ message: 'Invalid or expired OTP. Please try again.' });
-    }
-
-    // Clear login OTP
-    user.loginOTP = '';
-    user.loginOTPExpires = undefined;
-    await user.save({ validateBeforeSave: false });
 
     const token = generateToken(user._id);
 
@@ -290,13 +135,13 @@ const verifyLoginOTP = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Verify login OTP error:', error.message);
-    res.status(500).json({ message: 'Server error during OTP verification', error: error.message });
+    console.error('Login error:', error.message);
+    res.status(500).json({ message: 'Server error during login', error: error.message });
   }
 };
 
 // ─────────────────────────────────────────────────────────────
-// @desc    Send password reset OTP via email
+// @desc    Forgot password — generate token, email reset link
 // @route   POST /api/auth/forgot-password
 // @access  Public
 // ─────────────────────────────────────────────────────────────
@@ -317,20 +162,35 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const otp = generateOTP();
-    user.passwordResetOTP = otp;
-    user.passwordResetOTPExpires = Date.now() + 10 * 60 * 1000;
+    // Generate a random raw token (32 bytes → 64 hex chars)
+    const rawToken = crypto.randomBytes(32).toString('hex');
+
+    // Hash the token before storing in DB
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    // Store hash + 30-min expiry
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
     await user.save({ validateBeforeSave: false });
 
-    const emailSent = await sendResetOTPEmail(cleanEmail, otp);
+    // Build the reset URL using the raw (unhashed) token
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/reset-password?token=${rawToken}`;
+
+    const emailSent = await sendPasswordResetEmail(cleanEmail, user.name, resetUrl);
+
     if (!emailSent) {
+      // Roll back token so user can try again
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
       return res.status(500).json({
-        message: 'OTP generated but failed to send email. Check MAIL_USER, MAIL_PASS in .env.',
+        message: 'Failed to send reset email. Please check SMTP configuration.',
       });
     }
 
     res.status(200).json({
-      message: 'OTP sent to your registered email address. Please check your inbox.',
+      message: 'Password reset link sent to your email. Valid for 30 minutes.',
     });
   } catch (error) {
     console.error('Forgot password error:', error.message);
@@ -339,37 +199,41 @@ const forgotPassword = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// @desc    Reset password with OTP
+// @desc    Reset password — verify token, update password
 // @route   POST /api/auth/reset-password
 // @access  Public
 // ─────────────────────────────────────────────────────────────
 const resetPassword = async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    const { token, newPassword } = req.body;
 
-    if (!email || !otp || !newPassword) {
-      return res.status(400).json({ message: 'Email, OTP, and new password are required' });
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and new password are required' });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: cleanEmail });
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
+    // Hash the incoming raw token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with matching hashed token that hasn't expired
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
 
     if (!user) {
-      return res.status(404).json({ message: 'No account found with this email.' });
+      return res.status(400).json({
+        message: 'Reset link is invalid or has expired. Please request a new one.',
+      });
     }
 
-    if (
-      !user.passwordResetOTP ||
-      user.passwordResetOTP !== otp ||
-      !user.passwordResetOTPExpires ||
-      user.passwordResetOTPExpires < Date.now()
-    ) {
-      return res.status(400).json({ message: 'Invalid or expired OTP. Please request a new one.' });
-    }
-
+    // Update password and clear reset token fields
     user.password = newPassword;
-    user.passwordResetOTP = '';
-    user.passwordResetOTPExpires = undefined;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
     await user.save();
 
     res.status(200).json({
@@ -399,9 +263,7 @@ const getMe = async (req, res) => {
 
 module.exports = {
   register,
-  verifyRegisterOTP,
   login,
-  verifyLoginOTP,
   forgotPassword,
   resetPassword,
   getMe,

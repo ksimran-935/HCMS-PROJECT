@@ -1,18 +1,30 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/axios";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Read raw token from URL: /reset-password?token=<rawToken>
+  const token = searchParams.get("token") || "";
+
   const [form, setForm] = useState({
-    email: "",
-    otp: "",
     newPassword: "",
     confirmPassword: "",
   });
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // If no token in URL, show an immediate error
+  useEffect(() => {
+    if (!token) {
+      setError(
+        "Invalid or missing reset link. Please request a new password reset.",
+      );
+    }
+  }, [token]);
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -22,13 +34,13 @@ const ResetPassword = () => {
     setError("");
     setMessage("");
 
-    if (
-      !form.email ||
-      !form.otp ||
-      !form.newPassword ||
-      !form.confirmPassword
-    ) {
+    if (!form.newPassword || !form.confirmPassword) {
       setError("All fields are required.");
+      return;
+    }
+
+    if (form.newPassword.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
 
@@ -40,17 +52,15 @@ const ResetPassword = () => {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/reset-password", {
-        email: form.email,
-        otp: form.otp,
+        token,
         newPassword: form.newPassword,
       });
       setMessage(data.message || "Password reset successful.");
-      setForm({ email: "", otp: "", newPassword: "", confirmPassword: "" });
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Unable to reset password. Please try again.",
+        "Unable to reset password. The link may have expired.",
       );
     } finally {
       setLoading(false);
@@ -74,10 +84,11 @@ const ResetPassword = () => {
         </div>
 
         <div className="auth-card">
-          <h2>Verify OTP</h2>
+          <h2>Set New Password</h2>
           <p className="auth-subtitle">
-            Enter the OTP sent to your email and set a new password.
+            Choose a strong new password for your account.
           </p>
+
           {error && (
             <div className="alert alert-error">
               <span>⚠</span> {error}
@@ -86,97 +97,66 @@ const ResetPassword = () => {
 
           {message && (
             <div className="alert alert-success">
-              <span>✅</span> {message}
+              <span>✅</span> {message} Redirecting to sign in…
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label className="form-label" htmlFor="reset-email">
-                Registered Email Address
-              </label>
-              <input
-                id="reset-email"
-                className="form-input"
-                type="email"
-                name="email"
-                placeholder="yourname@nitj.ac.in"
-                value={form.email}
-                onChange={handleChange}
-                autoComplete="email"
-                required
-              />
-            </div>
+          {!message && token && (
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="form-group">
+                <label className="form-label" htmlFor="reset-password">
+                  New Password
+                </label>
+                <input
+                  id="reset-password"
+                  className="form-input"
+                  type="password"
+                  name="newPassword"
+                  placeholder="Minimum 6 characters"
+                  value={form.newPassword}
+                  onChange={handleChange}
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="reset-otp">
-                OTP
-              </label>
-              <input
-                id="reset-otp"
-                className="form-input"
-                type="text"
-                name="otp"
-                placeholder="Enter 6-digit OTP"
-                value={form.otp}
-                onChange={handleChange}
-                maxLength={6}
-                inputMode="numeric"
-                required
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="reset-confirm-password">
+                  Confirm Password
+                </label>
+                <input
+                  id="reset-confirm-password"
+                  className="form-input"
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm new password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  autoComplete="new-password"
+                  required
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="reset-password">
-                New Password
-              </label>
-              <input
-                id="reset-password"
-                className="form-input"
-                type="password"
-                name="newPassword"
-                placeholder="New password"
-                value={form.newPassword}
-                onChange={handleChange}
-                autoComplete="new-password"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="reset-confirm-password">
-                Confirm Password
-              </label>
-              <input
-                id="reset-confirm-password"
-                className="form-input"
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm new password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                autoComplete="new-password"
-                required
-              />
-            </div>
-
-            <button
-              className="btn btn-primary btn-lg"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Resetting password…" : "Reset Password"}
-            </button>
-          </form>
+              <button
+                className="btn btn-primary btn-lg"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? "Resetting password…" : "Reset Password"}
+              </button>
+            </form>
+          )}
 
           <div className="auth-divider">— or —</div>
 
           <p className="auth-footer">
             Remember your password? <Link to="/login">Sign in</Link>
           </p>
-          <p className="auth-footer">
-            Need a new OTP? <Link to="/forgot-password">Get a new code</Link>
-          </p>
+          {!token && (
+            <p className="auth-footer">
+              <Link to="/forgot-password">Request a new reset link</Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

@@ -43,35 +43,11 @@ const userSchema = new mongoose.Schema(
       enum: ['Electricity', 'Water', 'Cleanliness', 'Internet', 'Room Maintenance', 'Other', ''],
       default: '',
     },
-    // Email verification (registration OTP)
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    registerOTP: {
+    // Password reset token (stored as SHA-256 hash)
+    passwordResetToken: {
       type: String,
-      trim: true,
-      default: '',
     },
-    registerOTPExpires: {
-      type: Date,
-    },
-    // Password reset OTP
-    passwordResetOTP: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    passwordResetOTPExpires: {
-      type: Date,
-    },
-    // Login OTP
-    loginOTP: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    loginOTPExpires: {
+    passwordResetExpires: {
       type: Date,
     },
   },

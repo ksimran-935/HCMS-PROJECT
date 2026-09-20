@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 
 // --------------- Nodemailer Setup ---------------
-// Single reusable transporter — created once, reused for all emails (faster)
 let _transporter = null;
 
 const getMailTransport = () => {
@@ -9,13 +8,7 @@ const getMailTransport = () => {
   const user = process.env.MAIL_USER;
   const pass = process.env.MAIL_PASS;
 
-  if (
-    !host || !user || !pass ||
-    user === 'your_gmail@gmail.com' ||
-    pass === 'your_16_char_app_password'
-  ) {
-    return null; // not configured
-  }
+  if (!host || !user || !pass) return null;
 
   if (!_transporter) {
     _transporter = nodemailer.createTransport({
@@ -23,9 +16,9 @@ const getMailTransport = () => {
       port: parseInt(process.env.MAIL_PORT, 10) || 587,
       secure: process.env.MAIL_SECURE === 'true',
       auth: { user, pass },
-      connectionTimeout: 10000,  // 10s to establish connection
-      greetingTimeout: 10000,    // 10s for SMTP greeting
-      socketTimeout: 15000,      // 15s for each send operation
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
     });
   }
 
@@ -37,7 +30,7 @@ const FROM = () => process.env.MAIL_FROM || 'HCMS <no-reply@hcms.com>';
 const sendMail = async ({ to, subject, text, html }) => {
   const transport = getMailTransport();
   if (!transport) {
-    console.error('❌ SMTP not configured — check MAIL_HOST, MAIL_USER, MAIL_PASS in .env');
+    console.warn('⚠ SMTP not configured — email skipped');
     return false;
   }
   try {
@@ -46,65 +39,47 @@ const sendMail = async ({ to, subject, text, html }) => {
     return true;
   } catch (err) {
     console.error('❌ SMTP sendMail failed:', err.message);
-    // Reset on failure so it reconnects fresh next time
     _transporter = null;
     return false;
   }
 };
 
 // ────────────────────────────────────────────────
-// Auth Emails
+// Password Reset Email
 // ────────────────────────────────────────────────
 
-const sendRegisterOTPEmail = async (to, otp, name) =>
+/**
+ * Sends a password reset link to the user.
+ * @param {string} to - recipient email
+ * @param {string} name - recipient name
+ * @param {string} resetUrl - full reset URL containing the raw token
+ */
+const sendPasswordResetEmail = async (to, name, resetUrl) =>
   sendMail({
     to,
-    subject: 'HCMS — Verify Your Email (Registration OTP)',
-    text: `Hello ${name},\n\nYour HCMS registration OTP is: ${otp}\n\nThis code expires in 10 minutes.`,
+    subject: 'HCMS — Password Reset Request',
+    text: `Hello ${name},\n\nYou requested a password reset for your HCMS account.\n\nClick the link below to reset your password (valid for 30 minutes):\n${resetUrl}\n\nIf you did not request this, please ignore this email.`,
     html: `
       <div style="font-family:Arial,sans-serif;color:#1f2937;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
-        <h2 style="color:#5b21b6;margin-bottom:8px;">Verify Your Email</h2>
-        <p style="color:#6b7280;margin-bottom:4px;">Hello <strong>${name}</strong>,</p>
-        <p style="color:#6b7280;margin-bottom:24px;">Use the OTP below to complete your HCMS registration.</p>
-        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
-          <p style="font-size:2rem;font-weight:700;letter-spacing:0.5rem;color:#5b21b6;margin:0;">${otp}</p>
+        <h2 style="color:#1d4ed8;margin-bottom:8px;">🔑 Password Reset</h2>
+        <p style="color:#374151;">Hello <strong>${name}</strong>,</p>
+        <p style="color:#6b7280;margin-bottom:24px;">
+          You requested a password reset for your HCMS account. Click the button below to set a new password.
+          This link is valid for <strong>30 minutes</strong>.
+        </p>
+        <div style="text-align:center;margin-bottom:24px;">
+          <a href="${resetUrl}"
+             style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:1rem;">
+            Reset My Password
+          </a>
         </div>
-        <p style="font-size:0.85rem;color:#9ca3af;">This code expires in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-      </div>
-    `,
-  });
-
-const sendResetOTPEmail = async (to, otp) =>
-  sendMail({
-    to,
-    subject: 'HCMS Password Reset OTP',
-    text: `Your HCMS password reset code is: ${otp}\n\nThis code will expire in 10 minutes.`,
-    html: `
-      <div style="font-family:Arial,sans-serif;color:#1f2937;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
-        <h2 style="color:#5b21b6;margin-bottom:8px;">HCMS Password Reset</h2>
-        <p style="color:#6b7280;margin-bottom:24px;">You requested a password reset. Use the OTP below to proceed.</p>
-        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
-          <p style="font-size:2rem;font-weight:700;letter-spacing:0.5rem;color:#5b21b6;margin:0;">${otp}</p>
-        </div>
-        <p style="font-size:0.85rem;color:#9ca3af;">This code expires in <strong>10 minutes</strong>. If you did not request this, please ignore this email.</p>
-      </div>
-    `,
-  });
-
-const sendLoginOTPEmail = async (to, otp, name) =>
-  sendMail({
-    to,
-    subject: 'HCMS Login OTP',
-    text: `Hello ${name},\n\nYour HCMS login OTP is: ${otp}\n\nThis code expires in 10 minutes.`,
-    html: `
-      <div style="font-family:Arial,sans-serif;color:#1f2937;max-width:480px;margin:auto;padding:32px;border:1px solid #e5e7eb;border-radius:12px;">
-        <h2 style="color:#5b21b6;margin-bottom:8px;">HCMS Login Verification</h2>
-        <p style="color:#6b7280;margin-bottom:4px;">Hello <strong>${name}</strong>,</p>
-        <p style="color:#6b7280;margin-bottom:24px;">Use the OTP below to complete your login.</p>
-        <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px;">
-          <p style="font-size:2rem;font-weight:700;letter-spacing:0.5rem;color:#5b21b6;margin:0;">${otp}</p>
-        </div>
-        <p style="font-size:0.85rem;color:#9ca3af;">This code expires in <strong>10 minutes</strong>. If you did not attempt to log in, please ignore this email.</p>
+        <p style="font-size:0.82rem;color:#9ca3af;word-break:break-all;">
+          If the button doesn't work, copy and paste this URL into your browser:<br/>${resetUrl}
+        </p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0;"/>
+        <p style="font-size:0.78rem;color:#9ca3af;">
+          If you did not request a password reset, please ignore this email. Your password will not change.
+        </p>
       </div>
     `,
   });
@@ -122,7 +97,6 @@ const complaintCard = (complaint) => `
   </table>
 `;
 
-/** Sent to student when they submit a complaint */
 const sendComplaintSubmittedEmail = async (to, studentName, complaint) =>
   sendMail({
     to,
@@ -134,12 +108,11 @@ const sendComplaintSubmittedEmail = async (to, studentName, complaint) =>
         <p>Hello <strong>${studentName}</strong>,</p>
         <p>Your complaint has been successfully submitted. Here are the details:</p>
         ${complaintCard(complaint)}
-        <p style="color:#6b7280;font-size:0.85rem;">We will assign it to the relevant maintenance department shortly. You will receive an email once it is assigned.</p>
+        <p style="color:#6b7280;font-size:0.85rem;">We will assign it to the relevant maintenance department shortly.</p>
       </div>
     `,
   });
 
-/** Sent to student when their complaint is assigned to a staff member */
 const sendComplaintAssignedEmail = async (to, studentName, complaint, staffName, staffDept) =>
   sendMail({
     to,
@@ -159,7 +132,6 @@ const sendComplaintAssignedEmail = async (to, studentName, complaint, staffName,
     `,
   });
 
-/** Sent to staff member when a complaint is assigned to them */
 const sendStaffAssignmentEmail = async (to, staffName, complaint, studentName) =>
   sendMail({
     to,
@@ -179,7 +151,6 @@ const sendStaffAssignmentEmail = async (to, staffName, complaint, studentName) =
     `,
   });
 
-/** Sent to student on any status change (In Progress / Resolved) */
 const sendComplaintStatusEmail = async (to, studentName, complaint, newStatus, remarks) =>
   sendMail({
     to,
@@ -198,9 +169,7 @@ const sendComplaintStatusEmail = async (to, studentName, complaint, newStatus, r
   });
 
 module.exports = {
-  sendRegisterOTPEmail,
-  sendResetOTPEmail,
-  sendLoginOTPEmail,
+  sendPasswordResetEmail,
   sendComplaintSubmittedEmail,
   sendComplaintAssignedEmail,
   sendStaffAssignmentEmail,

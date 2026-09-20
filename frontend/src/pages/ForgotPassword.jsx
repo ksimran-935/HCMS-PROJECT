@@ -4,14 +4,13 @@ import api from "../api/axios";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setMessage("");
 
     if (!email) {
       setError("Please enter your registered email address.");
@@ -20,11 +19,12 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/forgot-password", { email });
-      setMessage(data.message || "OTP sent to your email address.");
+      await api.post("/auth/forgot-password", { email });
+      setSent(true);
     } catch (err) {
       setError(
-        err.response?.data?.message || "Unable to send OTP. Please try again.",
+        err.response?.data?.message ||
+        "No account found with this email. Please check and try again.",
       );
     } finally {
       setLoading(false);
@@ -48,67 +48,95 @@ const ForgotPassword = () => {
         </div>
 
         <div className="auth-card">
-          <h2>Reset Password</h2>
-          <p className="auth-subtitle">
-            Enter your registered email address to receive an OTP.
-          </p>
-          {error && (
-            <div className="alert alert-error">
-              <span>⚠</span> {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="alert alert-success">
-              <span>✅</span> {message}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="form-group">
-              <label className="form-label" htmlFor="forgot-email">
-                Registered Email Address
-              </label>
-              <input
-                id="forgot-email"
-                className="form-input"
-                type="email"
-                name="email"
-                placeholder="yourname@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
-              <small
+          {sent ? (
+            /* ── Success State ── */
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "12px" }}>📧</div>
+              <h2 style={{ marginBottom: "8px" }}>Check your inbox</h2>
+              <p className="auth-subtitle" style={{ marginBottom: "24px" }}>
+                A password reset link has been sent to{" "}
+                <strong>{email}</strong>. It expires in{" "}
+                <strong>30 minutes</strong>.
+              </p>
+              <p
                 style={{
-                  display: "block",
-                  marginTop: "6px",
-                  fontSize: "0.78rem",
-                  opacity: 0.6,
+                  fontSize: "0.82rem",
+                  color: "var(--text-muted)",
+                  marginBottom: "20px",
                 }}
               >
-                Enter the email address registered with your account.
-              </small>
+                Didn't receive it? Check your spam folder or{" "}
+                <button
+                  onClick={() => {
+                    setSent(false);
+                    setEmail("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent-primary)",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    padding: 0,
+                    fontSize: "inherit",
+                  }}
+                >
+                  try again
+                </button>
+                .
+              </p>
+              <Link to="/login" className="btn btn-primary btn-lg">
+                ← Back to Sign In
+              </Link>
             </div>
+          ) : (
+            /* ── Form State ── */
+            <>
+              <h2>Forgot Password?</h2>
+              <p className="auth-subtitle">
+                Enter your registered email and we'll send you a reset link.
+              </p>
 
-            <button
-              className="btn btn-primary btn-lg"
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? "Sending OTP…" : "Send OTP"}
-            </button>
-          </form>
+              {error && (
+                <div className="alert alert-error">
+                  <span>⚠</span> {error}
+                </div>
+              )}
 
-          <div className="auth-divider">— or —</div>
+              <form onSubmit={handleSubmit} noValidate>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="forgot-email">
+                    Registered Email Address
+                  </label>
+                  <input
+                    id="forgot-email"
+                    className="form-input"
+                    type="email"
+                    name="email"
+                    placeholder="yourname@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
 
-          <p className="auth-footer">
-            Remember your password? <Link to="/login">Sign in</Link>
-          </p>
-          <p className="auth-footer">
-            Have OTP? <Link to="/reset-password">Reset password now</Link>
-          </p>
+                <button
+                  className="btn btn-primary btn-lg"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? "Sending link…" : "Send Reset Link"}
+                </button>
+              </form>
+
+              <div className="auth-divider">— or —</div>
+
+              <p className="auth-footer">
+                Remember your password? <Link to="/login">Sign in</Link>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
